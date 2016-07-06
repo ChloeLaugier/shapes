@@ -6,17 +6,17 @@
 //  Copyright (c) 2015 Chloé Laugier. All rights reserved.
 //
 
-import UIKit
 import SpriteKit
+import UIKit
 
 extension SKNode {
     class func unarchiveFromFile(file : String) -> SKNode? {
         if let path = NSBundle.mainBundle().pathForResource(file, ofType: "sks") {
-            var sceneData = NSData(contentsOfFile: path, options: .DataReadingMappedIfSafe, error: nil)!
-            var archiver = NSKeyedUnarchiver(forReadingWithData: sceneData)
+            let sceneData = try! NSData(contentsOfFile: path, options: .DataReadingMappedIfSafe)
+            let archiver = NSKeyedUnarchiver(forReadingWithData: sceneData)
             
             archiver.setClass(self.classForKeyedUnarchiver(), forClassName: "SKScene")
-            let scene = archiver.decodeObjectForKey(NSKeyedArchiveRootObjectKey) as! GameScene
+            let scene = archiver.decodeObjectForKey(NSKeyedArchiveRootObjectKey) as! SKScene
             archiver.finishDecoding()
             return scene
         } else {
@@ -26,11 +26,30 @@ extension SKNode {
 }
 
 class GameViewController: UIViewController {
+    
+    var scene: GameScene!
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        if let scene = GameScene.unarchiveFromFile("GameScene") as? GameScene {
+        
+        // Configure the view.
+        /*let skView = view as! SKView
+        skView.multipleTouchEnabled = false
+        skView.showsFPS = true
+        skView.showsNodeCount = true
+        skView.ignoresSiblingOrder = true
+        
+        // Create and configure the scene.
+        scene = GameScene(size: skView.bounds.size)
+        scene.scaleMode = .AspectFill
+        
+        // Present the scene.
+        skView.presentScene(scene)*/
+        
+        if let scene = PlayScene.unarchiveFromFile("PlayScene") as? PlayScene
+        {
+            
+          
             // Configure the view.
             let skView = self.view as! SKView
             skView.showsFPS = true
@@ -42,19 +61,25 @@ class GameViewController: UIViewController {
             /* Set the scale mode to scale to fit the window */
             scene.scaleMode = .AspectFill
             
+            
             skView.presentScene(scene)
+            scene.runAction(SKAction.repeatActionForever(SKAction.playSoundFileNamed("good.mp3", waitForCompletion:true)));
+            
+            
         }
+        
+        
     }
 
     override func shouldAutorotate() -> Bool {
         return true
     }
 
-    override func supportedInterfaceOrientations() -> Int {
+    override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
         if UIDevice.currentDevice().userInterfaceIdiom == .Phone {
-            return Int(UIInterfaceOrientationMask.AllButUpsideDown.rawValue)
+            return UIInterfaceOrientationMask.AllButUpsideDown
         } else {
-            return Int(UIInterfaceOrientationMask.All.rawValue)
+            return UIInterfaceOrientationMask.All
         }
     }
 
