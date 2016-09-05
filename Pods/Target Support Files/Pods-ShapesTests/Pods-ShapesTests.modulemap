@@ -1,0 +1,6 @@
+framework module Pods_ShapesTests {
+  umbrella header "Pods-ShapesTests-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -8,6 +8,10 @@
 
 import SpriteKit
 
+protocol GameSceneDelegate: class {
+    func didEndGame()
+}
+
 class GameScene: SKScene {
     
     var _allShapes: [Shape] = []
@@ -21,6 +25,7 @@ class GameScene: SKScene {
     var _chronoTime = 3
     var _levelObject : Level = Level(_level: 1)
     var _posTaken : [CGPoint]=[]
+    weak var gameDelegate:GameSceneDelegate?
    
     
     override func didMoveToView(view: SKView) {
@@ -172,6 +177,33 @@ class GameScene: SKScene {
                 SKAction.moveToX(sprite.position.x-(self.view?.bounds.size.width)!, duration: 15)
             )
             break
+        case 3:
+            sprite.runAction(
+                SKAction.sequence([
+                     SKAction.waitForDuration(Double(arc4random_uniform(5))),
+                     SKAction.scaleTo(0, duration: 15)
+                    ])
+            )
+            break
+        case 4:
+            let randSpeed = Double(1 + arc4random_uniform(5));
+            sprite.runAction(
+                SKAction.repeatActionForever(
+                    SKAction.sequence([
+                        SKAction.rotateByAngle(3.14, duration: randSpeed)])
+                )
+            )
+            break
+        case 5:
+            let randSpeed = Double(1 + arc4random_uniform(5));
+            sprite.runAction(
+                SKAction.group([SKAction.repeatActionForever(
+                    SKAction.sequence([
+                        SKAction.rotateByAngle(3.14, duration: randSpeed)])
+                    ), SKAction.moveToY(-5, duration: 10)])
+                
+            )
+            break
         default:
             break
         }
@@ -258,23 +290,15 @@ class GameScene: SKScene {
             let location = touch.locationInNode(self)
             
             if let ball = self.nodeAtPoint(location) as? SKNode {
-                print(ball.name, terminator: " -> ")
                 if (ball.name == "quit") {
-                    if let scene = PlayScene.unarchiveFromFile("PlayScene") as? PlayScene
-                    {
-                        scene.scaleMode = .AspectFill
-                        view!.presentScene(scene)
-                    }
-                    
+                    gameDelegate!.didEndGame()
                 }
                 else if (ball.name == "main") {
                     startCatch()
                 }
                 else if (ball.name != nil){
-                    print(ball.name!);
-                    print(_allShapes.count)
+                    
                     let current : Shape = _allShapes[Int(ball.name!)!];
-                    print(current.shapeType);
                     if (current.shapeType == _main?.shapeType) {
                         current.fade()
                         _levelObject.numberOfGoodSprite -= 1
@@ -290,6 +314,7 @@ class GameScene: SKScene {
                         runAction(SKAction.playSoundFileNamed("1315.mp3", waitForCompletion:true))
                         endGame(2);
                     }
+                    ball.name = nil
                     
                 }
                 
@@ -339,26 +364,18 @@ class GameScene: SKScene {
         self.addChild(ok)
         let scale = SKAction.scaleTo(2.0, duration: 0.5)
         ok.runAction(scale, completion : {
-            if let playScene = PlayScene.unarchiveFromFile("PlayScene") as? PlayScene
-            {
-                playScene.scaleMode = .AspectFill
-                self.view!.presentScene(playScene)
-            }
+            self.gameDelegate?.didEndGame()
             
         })
-        /*if let scene = WinScene.unarchiveFromFile("WinScene") as? WinScene
-        {
-            scene.gameWon = win;
-            scene.scaleMode = .AspectFill
-            view!.presentScene(scene)
-        }*/
     }
     
     
    
-    override func update(currentTime: CFTimeInterval) {
+/*    override func update(currentTime: CFTimeInterval) {
         /* Called before each frame is rendered */
-    }
+    }*/
+    
+    
     
     
     

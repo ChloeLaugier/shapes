@@ -8,6 +8,8 @@
 
 import SpriteKit
 import UIKit
+import GoogleMobileAds
+import AVFoundation
 
 extension SKNode {
     class func unarchiveFromFile(file : String) -> SKNode? {
@@ -25,50 +27,36 @@ extension SKNode {
     }
 }
 
-class GameViewController: UIViewController {
+class GameViewController: UIViewController, GADInterstitialDelegate, PlaySceneDelegate, GameSceneDelegate {
     
-    var scene: GameScene!
+    var _interstitial: GADInterstitial!
+    var _interstitialFrequency : Int = 0
+    var _music:AVAudioPlayer = AVAudioPlayer()
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        _interstitial = createAndLoadInterstitial()
+        showPlayScene()
+
         
-        // Configure the view.
-        /*let skView = view as! SKView
-        skView.multipleTouchEnabled = false
-        skView.showsFPS = true
-        skView.showsNodeCount = true
-        skView.ignoresSiblingOrder = true
-        
-        // Create and configure the scene.
-        scene = GameScene(size: skView.bounds.size)
-        scene.scaleMode = .AspectFill
-        
-        // Present the scene.
-        skView.presentScene(scene)*/
-        
-        if let scene = PlayScene.unarchiveFromFile("PlayScene") as? PlayScene
-        {
-            
-          
-            // Configure the view.
-            let skView = self.view as! SKView
-            skView.showsFPS = true
-            skView.showsNodeCount = true
-            
-            /* Sprite Kit applies additional optimizations to improve rendering performance */
-            skView.ignoresSiblingOrder = true
-            
-            /* Set the scale mode to scale to fit the window */
-            scene.scaleMode = .AspectFill
-            
-            
-            skView.presentScene(scene)
-            scene.runAction(SKAction.repeatActionForever(SKAction.playSoundFileNamed("good.mp3", waitForCompletion:true)));
-            
+        let sound = NSURL(fileURLWithPath: NSBundle.mainBundle().pathForResource("background", ofType: "mp3")!)
+        do{
+            _music = try AVAudioPlayer(contentsOfURL:sound)
+            _music.numberOfLoops = -1
+            _music.volume = 0.5
+            _music.prepareToPlay()
+            _music.play()
+        }catch {
             
         }
         
-        
+    }
+    
+    func showAdd() {
+        if _interstitial.isReady {
+            _interstitial.presentFromRootViewController(self)
+        }
     }
 
     override func shouldAutorotate() -> Bool {
@@ -90,5 +78,66 @@ class GameViewController: UIViewController {
 
     override func prefersStatusBarHidden() -> Bool {
         return true
+    }
+    
+    func createAndLoadInterstitial() -> GADInterstitial {
+        _interstitial = GADInterstitial(adUnitID: "ca-app-pub-3940256099942544/4411468910")
+        _interstitial.delegate = self
+        
+        let request = GADRequest()
+        // Request test ads on devices you specify. Your test device ID is printed to the console when
+        // an ad request is made.
+        request.testDevices = [ kGADSimulatorID, "518abfe44096c6c5c4d945c9a83eeea3" ]
+        _interstitial.loadRequest(request)
+        return _interstitial
+    }
+    
+    func interstitialDidDismissScreen(ad: GADInterstitial!) {
+        _interstitial = createAndLoadInterstitial()
+    }
+    
+    func didStartGame(sender: PlayScene) {
+        
+        _interstitialFrequency = _interstitialFrequency+1
+        if (_interstitialFrequency == 3) {
+            showAdd()
+            _interstitialFrequency = 0
+        }
+       
+        
+    }
+    
+    func playGame(level: Int) {
+        let skView = self.view as! SKView
+        let gameScene = GameScene.unarchiveFromFile("GameScene") as! GameScene
+        let viewSize = self.view?.bounds.size
+        gameScene.size = viewSize!
+        gameScene._level = level
+        gameScene.scaleMode = .AspectFill
+        gameScene.gameDelegate = self
+        skView.ignoresSiblingOrder = true
+        skView.presentScene(gameScene, transition: SKTransition.crossFadeWithDuration(0.5))
+    }
+    
+    func didEndGame() {
+        showPlayScene();
+    }
+    
+    
+    func showPlayScene() -> PlayScene?{
+        if let scene = PlayScene.unarchiveFromFile("PlayScene") as? PlayScene
+        {
+            let skView = self.view as! SKView
+            //skView.showsFPS = false
+            //skView.showsNodeCount = false
+            /* Sprite Kit applies additional optimizations to improve rendering performance */
+            skView.ignoresSiblingOrder = true
+            /* Set the scale mode to scale to fit the window */
+            scene.scaleMode = .AspectFill
+            scene.sceneDelegate = self
+            skView.presentScene(scene, transition: SKTransition.crossFadeWithDuration(0.5))
+            return scene
+        }
+        return PlayScene()
     }
 }

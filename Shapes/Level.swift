@@ -22,7 +22,6 @@ class Level {
     var limitTime : Int = 20
     var animation : Int = 0
     init (_level: Int) {
-        if (_level < 9) {
             let path = NSBundle.mainBundle().pathForResource("Level", ofType: "json")
             let jsonData = NSData(contentsOfFile: path!)
             var json : [AnyObject] = []
@@ -42,7 +41,6 @@ class Level {
             } catch {
                 print(error)
             }
-        }
     }
     
     func colorWithJson(color : [CGFloat]) -> UIColor {

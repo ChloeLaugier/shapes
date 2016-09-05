@@ -31,7 +31,7 @@ class Player {
     }
     
     func setDebug() {
-        level = 0
+        level = 16
         let defaults = NSUserDefaults.standardUserDefaults()
         defaults.setInteger(level, forKey: "level")
     }

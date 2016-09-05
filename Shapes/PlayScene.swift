@@ -9,15 +9,24 @@
 import SpriteKit
 import UIKit
 
+protocol PlaySceneDelegate: class {
+    func didStartGame(sender: PlayScene)
+    func playGame(level : Int)
+}
 
 class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
     
     var levelTable : UITableView = UITableView()
-    var levelsNumber = 12
+    var levelsNumber = 16
     var levelTableInfos : [Level]?
     let rowHeight : CGFloat = 110.0;
     var rowWidth : CGFloat = 0.0;
-    var transition : TransitionScene = TransitionScene()
+    weak var sceneDelegate:PlaySceneDelegate?
+    
+    
+   
+    var interAdView = UIView()
+    var closeButton = UIButton(type : UIButtonType.System)
     
 
     
@@ -28,16 +37,38 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
         
         //Player.sharedInstance.setLevel(0);
         levelTableInfos = []
-        for  i in 0...12 {
+        for  i in 0...levelsNumber-1 {
             levelTableInfos!.append(Level(_level : i))
         }
         
         self.rowWidth = self.view!.bounds.width-40;
-        let gradientTexture : SKTexture = SKTexture(size: self.frame.size, firstColor: levelTableInfos![Player.sharedInstance.level].backgroundColors[0], lastColor: levelTableInfos![Player.sharedInstance.level].backgroundColors[1])
+        var gradientTexture : SKTexture = SKTexture(size: self.frame.size, firstColor: levelTableInfos![0].backgroundColors[0], lastColor: levelTableInfos![0].backgroundColors[1])
+        if (Player.sharedInstance.level < levelsNumber) {
+            gradientTexture = SKTexture(size: self.frame.size, firstColor: levelTableInfos![Player.sharedInstance.level].backgroundColors[0], lastColor: levelTableInfos![Player.sharedInstance.level].backgroundColors[1])
+        }
+        
         let bg : SKSpriteNode = SKSpriteNode(texture: gradientTexture)
         bg.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height/2)
         bg.zPosition = -1
+        bg.alpha = 0
+        
         self.addChild(bg)
+        bg.runAction(
+            SKAction.fadeAlphaTo(1, duration: 1)
+        )
+        
+        let logo : SKSpriteNode = SKSpriteNode(imageNamed: "shapes")
+        logo.position = CGPoint(x : self.frame.size.width/2, y:self.frame.size.height-70)
+        logo.setScale(0.5)
+        logo.name = "shapes"
+        self.addChild(logo)
+        logo.runAction(
+            SKAction.sequence([
+                SKAction.waitForDuration(0.2),
+                SKAction.scaleTo(0.9, duration: 0.3),
+                SKAction.scaleTo(0.8, duration: 0.2)
+            ])
+        )
     
         if let fireEmmitter = SKEmitterNode(fileNamed: "MyParticle2.sks") {
             fireEmmitter.position = CGPointMake(self.frame.size.width / 2, self.frame.size.height)
@@ -55,18 +86,20 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
         levelTable.separatorStyle = UITableViewCellSeparatorStyle.None
         levelTable.showsHorizontalScrollIndicator = false;
         levelTable.showsVerticalScrollIndicator = false;
-        
+        levelTable.alpha = 0;
         self.view?.addSubview(levelTable)
+        UIView.animateWithDuration(1.5, animations: {
+            self.levelTable.alpha = 1.0
+        })
     
         
         let indexPath = NSIndexPath(forRow: Player.sharedInstance.level, inSection:0)
         levelTable.scrollToRowAtIndexPath(indexPath, atScrollPosition: UITableViewScrollPosition.Top, animated: true)
-        
-        transition.prepareAd()
-        
-        
+    
+        sceneDelegate?.didStartGame(self)
     }
     
+
     /*override func didFinishUpdate() {
         levelTable.reloadData()
     }*/
@@ -74,7 +107,7 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
     
     func tableView(tableView:UITableView, numberOfRowsInSection section:Int) -> Int
     {
-        return levelsNumber
+        return levelsNumber + 1
     }
     
     class BorderedCell : UITableViewCell {
@@ -113,12 +146,7 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
         
         if (cell == nil) {
             cell=BorderedCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "CELL")
-            
-            
-            
-            
             cell?.backgroundColor = UIColor.clearColor()
-            cell!.textLabel!.font = UIFont.boldSystemFontOfSize(40)
             cell!.textLabel!.textAlignment = NSTextAlignment.Right
         
             cell!._border.frame = CGRectMake(0,5,self.rowWidth, self.rowHeight-20)
@@ -137,8 +165,6 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
             cell!._imageView.frame = imgFrame
             cell!._imageView.contentMode = UIViewContentMode.BottomLeft
             cell!.addSubview(cell!._imageView)
-            
-            
         }
         
        
@@ -147,29 +173,37 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
         
         //cell!.detailTextLabel!.text=levelTableInfos![indexPath.row].levelDescription
         //cell!.detailTextLabel!.textColor = UIColor.whiteColor()
-       
         // levelTableInfos![indexPath.row].backgroundColors[0]/*.colorWithAlphaComponent(0.5)*/
         cell!._border.opacity = 1
         cell!._border.borderColor = UIColor.whiteColor().colorWithAlphaComponent(0.5).CGColor
         cell!._imageView.image = nil
-        if (Player.sharedInstance.level >= indexPath.row) {
-            
+        
+        cell!.textLabel!.font = UIFont.boldSystemFontOfSize(40)
+        
+        var levelNumberMax = Player.sharedInstance.level
+        if (levelNumberMax >= levelsNumber) {
+            levelNumberMax = 0
+        }
+        if (indexPath.row >= levelsNumber) {
+            cell!.textLabel!.text = "Ask for more!"
+            cell!.textLabel!.font = UIFont.boldSystemFontOfSize(20)
+            cell!.userInteractionEnabled = true
+        }
+        else if (Player.sharedInstance.level >= indexPath.row) {
             cell!._border.backgroundColor = UIColor.whiteColor().colorWithAlphaComponent(0).CGColor
             cell!.userInteractionEnabled = true
             
             if (Player.sharedInstance.level > indexPath.row) {
                 cell!._border.opacity = 0.5
-                var textColor : UIColor = levelTableInfos![Player.sharedInstance.level].backgroundColors[1]
+                var textColor : UIColor = levelTableInfos![levelNumberMax].backgroundColors[1]
                 textColor = darkerColorForColor(textColor)
                 cell?.textLabel?.textColor = textColor
-                let imgIndex = indexPath.row < 9 ? indexPath.row : 1;
-                let image : UIImage = UIImage(named: "cell\(imgIndex)")!
+                let image : UIImage = UIImage(named: "cell\(indexPath.row)")!
                 cell!._imageView.image = image.imageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate)
                 cell!._imageView.tintColor = UIColor.whiteColor()
             }
             else if (Player.sharedInstance.level == indexPath.row) {
-                let imgIndex = indexPath.row < 9 ? indexPath.row : 1;
-                let image : UIImage = UIImage(named: "cell\(imgIndex)")!
+                let image : UIImage = UIImage(named: "cell\(indexPath.row)")!
                 cell!._imageView.image = image
             }
             else {
@@ -184,6 +218,26 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
             cell!.userInteractionEnabled = false
         }
         return cell!
+    }
+    
+
+    
+    func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
+        
+        var rotation : CATransform3D;
+        rotation = CATransform3DMakeRotation( (60.0*3.14)/180, 0.0, 0.2, 0)//0 ,0.7, 0.4
+        //rotation.m34 = 1.0 / -600
+        cell.layer.shadowColor = UIColor.blackColor().CGColor
+        //cell.layer.shadowOffset = CGSizeMake(10, 10);
+        cell.alpha = 0;
+        cell.layer.transform = rotation;
+        //cell.layer.anchorPoint = CGPointMake(0, 0.5);
+        UIView.beginAnimations("alpha", context: nil)
+        UIView.setAnimationDuration(0.7);
+        cell.layer.transform = CATransform3DIdentity;
+        cell.alpha = 1;
+        //cell.layer.shadowOffset = CGSizeMake(0, 0);
+        UIView.commitAnimations();
     }
     
     
@@ -201,21 +255,30 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
 
     
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
-        playLevel(indexPath.row)
+        if (indexPath.row < 16) {
+            playLevel(indexPath.row)
+        }
+        else {
+            let application = UIApplication.sharedApplication()
+            let urls = [
+                "fb://profile/1145643698836408",
+                "http://www.facebook.com/Shapes-game-1145643698836408"
+            ]
+            for url in urls {
+                if application.canOpenURL(NSURL(string: url)!) {
+                    application.openURL(NSURL(string: url)!)
+                    return
+                }
+            }
+        }
     }
     
     
     func playLevel (level : Int) {
+        
         levelTable.removeFromSuperview()
-        if let view = view {
-            let gameScene = GameScene.unarchiveFromFile("GameScene") as! GameScene
-            let viewSize = self.view?.bounds.size
-            gameScene.size = viewSize!
-            gameScene._level = level
-            gameScene.scaleMode = .AspectFill
-            let transition = SKTransition.crossFadeWithDuration(0.5)
-            view.presentScene(gameScene, transition: transition)
-        }
+        sceneDelegate!.playGame(level)
+        
     }
     
     
@@ -226,15 +289,19 @@ class PlayScene: SKScene, UITableViewDataSource, UITableViewDelegate {
             let node = self.nodeAtPoint(location)
             if (node.name == "shapes") {
                 Player.sharedInstance.setDebug()
-                
-                let viewSize = self.view?.bounds.size
-                transition.size = viewSize!
-                transition.scaleMode = .AspectFill
-                self.view?.presentScene(transition, transition : SKTransition.crossFadeWithDuration(0.5))
+                //levelTable.removeFromSuperview()
+                //let viewSize = self.view?.bounds.size
+                //transitionAd.size = viewSize!
+                //transitionAd.scaleMode = .AspectFill
+                //self.view?.presentScene(transitionAd, transition : SKTransition.crossFadeWithDuration(0.5))
             }
         }
     }
     
+    
+   
+    
+   
     
    
 }
